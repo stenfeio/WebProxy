@@ -12,8 +12,10 @@ using boost::asio::ip::tcp;
 
 class tcp_clientCus{
 	public:
-		tcp_clientCus(io_service& io_service, const string server, const int port): resolver(io_service), clientSocket(io_service){
-			connectToServer(server, port);
+		tcp_clientCus(io_service& io_service/*, const string server, const int port*/): resolver(io_service), clientSocket(io_service){
+		
+			cout <<"Just wrote" << endl;	
+			connectToServer("www.google.com", 80);
 		}
 		
 		//void setIPPort(string server, int port){
@@ -22,6 +24,7 @@ class tcp_clientCus{
 	private:
 		void connectToServer(string serverName, int serverPort){
 			try{
+				cout << "Trying to talk to server.." << endl;
 				tcp::resolver::query query(serverName, "daytime");
 				tcp::resolver::iterator endpoints_iterator = resolver.resolve(query);	
 
@@ -75,10 +78,9 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 		//		throw boost::system::system_error(error);
 
 			cout.write(buf.data(), len);
-			
 			std::string s("www.google.com");
 			int p = 80;
-			tcp_clientCus clientCus(io_service, s, p) ;
+			tcp_clientCus clientCus(io_service);
 			//clientCus.setIPPort(s,p);
 		}
 	
@@ -86,7 +88,6 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 		//class contructor that assigns the socket_
 		tcp_connection(io_service& io_service) : socket_(io_service){}
 		void handle_write(const boost::system::error_code&, size_t){}
-		//tcp_clientCus * clientCus;
 		tcp::socket socket_;
 		string m_message;
 };
