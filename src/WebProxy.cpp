@@ -1,5 +1,5 @@
 #include <iostream>
-#include <string>
+#include <string.h>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/array.hpp>
@@ -9,6 +9,42 @@
 using namespace std;
 using namespace boost::asio;
 using boost::asio::ip::tcp;
+
+class tcp_clientCus{
+	public:
+		tcp_clientCus(io_service& io_service, const string server, const int port): resolver(io_service), clientSocket(io_service){
+			connectToServer(server, port);
+		}
+		
+		//void setIPPort(string server, int port){
+		//	connectToServer(server, port);	
+		//}
+	private:
+		void connectToServer(string serverName, int serverPort){
+			try{
+				tcp::resolver::query query(serverName, "daytime");
+				tcp::resolver::iterator endpoints_iterator = resolver.resolve(query);	
+
+				connect(clientSocket, endpoints_iterator);
+			
+				boost::system::error_code ignored_error;
+				write(clientSocket, buffer(""), ignored_error);
+
+				boost::system::error_code read_error;
+				size_t responseLen = clientSocket.read_some(buffer(httpResBuf), read_error);
+				cout.write(httpResBuf.data(), responseLen);
+			}
+			catch(exception& e){
+				cerr << e.what() << endl;
+			}
+		}	
+		
+
+		tcp::resolver resolver;
+		tcp::socket clientSocket;
+		//boost::asio::buffer requestBuffer("");
+		boost::array<char, 1024> httpResBuf;
+};
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 	public:
@@ -39,13 +75,18 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 		//		throw boost::system::system_error(error);
 
 			cout.write(buf.data(), len);
+			
+			std::string s("www.google.com");
+			int p = 80;
+			tcp_clientCus clientCus(io_service, s, p) ;
+			//clientCus.setIPPort(s,p);
 		}
 	
 	private:
 		//class contructor that assigns the socket_
 		tcp_connection(io_service& io_service) : socket_(io_service){}
 		void handle_write(const boost::system::error_code&, size_t){}
-		
+		//tcp_clientCus * clientCus;
 		tcp::socket socket_;
 		string m_message;
 };
@@ -91,7 +132,8 @@ int main(int argc, char *argv[]){
 	try{
 		io_service io_service;
 		tcp_server server(io_service, atoi(argv[2]));
-		io_service.run();	
+		//tcp_clientCus talal (io_service, "asfd", 5);
+	        io_service.run();	
 
 	}
 	catch(exception& e){
