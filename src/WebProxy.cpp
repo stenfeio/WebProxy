@@ -25,7 +25,7 @@ class tcp_clientCus{
 		void connectToServer(string serverName, int serverPort){
 			try{
 				cout << "Trying to talk to server.." << endl;
-				tcp::resolver::query query(serverName, "daytime");
+				tcp::resolver::query query(serverName, "http");
 				tcp::resolver::iterator endpoints_iterator = resolver.resolve(query);	
 
 				connect(clientSocket, endpoints_iterator);
@@ -78,18 +78,45 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 		//		throw boost::system::system_error(error);
 
 			cout.write(buf.data(), len);
+			
 			std::string s("www.google.com");
-			int p = 80;
-			tcp_clientCus clientCus(io_service);
+			//int p = 80;
+			//tcp_clientCus clientCus(io_service);
 			//clientCus.setIPPort(s,p);
+			
+			try{
+				//cout << "Trying to talk to server.." << endl;
+				//tcp::resolver resolverTool(io_service);
+				//tcp::socket remoteSocket(io_service);
+				boost::array<char, 1024> resFromRemote;
+				
+				tcp::resolver::query query("www.google.com", "http");
+				tcp::resolver::iterator endpoints_iterator = r_.resolve(query);	
+				
+				connect(remoteSocket_, endpoints_iterator);
+				
+				boost::system::error_code ignored_error;
+				write(remoteSocket_, buffer(""), ignored_error);
+				
+				boost::system::error_code read_error;
+				size_t responseLen = remoteSocket_.read_some(buffer(resFromRemote), read_error);
+				cout.write(resFromRemote.data(), responseLen);
+					
+			}
+			catch(exception& e){
+				cerr << e.what() << endl;
+			}
+			
 		}
 	
 	private:
 		//class contructor that assigns the socket_
-		tcp_connection(io_service& io_service) : socket_(io_service){}
+		tcp_connection(io_service& io_service) : socket_(io_service), r_(io_service), remoteSocket_(io_service) {}
 		void handle_write(const boost::system::error_code&, size_t){}
 		tcp::socket socket_;
 		string m_message;
+		tcp::resolver r_;
+		tcp::socket remoteSocket_;
 };
 
 class tcp_server{
