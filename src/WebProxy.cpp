@@ -1,5 +1,8 @@
 #include <iostream>
 #include <string.h>
+#include <cctype>
+#include <locale>
+#include <boost/locale.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/array.hpp>
@@ -45,7 +48,6 @@ class tcp_clientCus{
 
 		tcp::resolver resolver;
 		tcp::socket clientSocket;
-		//boost::asio::buffer requestBuffer("");
 		boost::array<char, 1024> httpResBuf;
 };
 
@@ -67,40 +69,39 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 		//from the client. //TODO Connect to server based on 
 		//what was parsed.
 		void start(){
-			boost::array<char, 1024> buf;
+			boost::array<char, 512> reqBuf;
 			boost::system::error_code error;
 
-			size_t len = socket_.read_some(buffer(buf), error);
-
+			size_t len = socket_.read_some( buffer(reqBuf), error);
+			string domain;
+			//cout << len << endl;
 		//	if(error == error::eof)
 		//		break;
 		//	else if (error)
 		//		throw boost::system::system_error(error);
 
-			cout.write(buf.data(), len);
-			
-			std::string s("www.google.com");
-			//int p = 80;
-			//tcp_clientCus clientCus(io_service);
-			//clientCus.setIPPort(s,p);
+			//cout.write(reqBuf.data(), len);
+			//TODO parse reqBuf to get address
+			//boost::array<char, len> theRequest;	
+			parseRequest(reqBuf, len, domain);
+			//cout << domain << endl;
+			//std::string s("www.google.com");
 			
 			try{
-				//cout << "Trying to talk to server.." << endl;
-				//tcp::resolver resolverTool(io_service);
-				//tcp::socket remoteSocket(io_service);
 				boost::array<char, 1024> resFromRemote;
 				
-				tcp::resolver::query query("www.google.com", "http");
+				tcp::resolver::query query(domain, "http");
 				tcp::resolver::iterator endpoints_iterator = r_.resolve(query);	
 				
 				connect(remoteSocket_, endpoints_iterator);
 				
 				boost::system::error_code ignored_error;
-				write(remoteSocket_, buffer(""), ignored_error);
+				write(remoteSocket_, buffer(reqBuf), ignored_error);
 				
 				boost::system::error_code read_error;
 				size_t responseLen = remoteSocket_.read_some(buffer(resFromRemote), read_error);
-				cout.write(resFromRemote.data(), responseLen);
+				//cout.write(resFromRemote.data(), responseLen);
+				write(socket_, buffer(resFromRemote, responseLen), error);
 					
 			}
 			catch(exception& e){
@@ -113,6 +114,69 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection>{
 		//class contructor that assigns the socket_
 		tcp_connection(io_service& io_service) : socket_(io_service), r_(io_service), remoteSocket_(io_service) {}
 		void handle_write(const boost::system::error_code&, size_t){}
+		
+		void parseRequest(boost::array<char,512> &request, size_t size, string &domain){
+			bool errorFlag(false);
+
+			string requestString(request.begin(), size);
+			istringstream parser(requestString);
+			string requestType;
+			//string domain;
+			parser >> requestType;
+			
+			for(int i = 0; i < 4; i++){
+				parser >> domain;
+			}
+	
+			for(int i = 0; i < requestType.length(); i++){
+				if(!isupper(requestType.at(i))){
+					//cout << "checking request " << endl;
+					errorFlag = true;
+					break;
+				}	
+			}
+			
+			/*		
+			const boost::locale::generator gen;
+			const std::locale loc = gen.generate(std::locale(), "");
+			std::locale::global(loc);
+			std::cout.imbue(loc);
+			*/
+			
+			std::locale loc;
+			if(errorFlag){
+				//TODO capitalize request
+				string upperTemp(requestType);
+				for(int i = 0; i < requestType.length(); i++){
+					upperTemp.at(i) = toupper(requestType.at(i), loc);
+				}//cout << "Replacing " << requestType << " with " << toupper(requestType, loc) << endl;
+				bool temp = tcp_connection::replace(requestString, requestType, upperTemp);
+				
+				//cout << requestString << " " << requestType << " " << toupper(requestType,loc) << endl;
+				//string x("get get get"), y("get"), z("GET");
+				//bool temp = tcp_connection::replace(x, y, z);
+
+				cout << "checking request " << endl;
+			}
+			
+			for(int i = 0; i < requestType.length(); i++){
+				request[i] = requestString.at(i);
+			}
+			cout << requestString << endl;
+			
+			//cout << s << endl;
+		}
+		
+		bool replace(std::string& str, const std::string& from, const std::string& to) {
+			size_t start_pos = str.find(from);
+    			if(start_pos == std::string::npos)
+        			return false;
+    			cout << "Inside replace ... " << endl;
+    			str.replace(start_pos, from.length(), to);
+    			cout << "Inside replace ... " << endl;
+    			return true;
+		}		
+		
 		tcp::socket socket_;
 		string m_message;
 		tcp::resolver r_;
